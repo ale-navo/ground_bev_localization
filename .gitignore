@@ -1,0 +1,7 @@
+data/*
+models/
+models*/
+datasets/*
+visualisations/*
+verification/*
+_pycache_/*
