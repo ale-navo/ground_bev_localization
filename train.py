@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
+from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 import os
 import numpy as np
@@ -14,14 +15,14 @@ CONFIG = {
     'data_root': '/media/hdd/ale_navone/GAIA/vineyard_dataset',
     'vit_model': 'vit_small_patch16_224', # Use a smaller model for faster training
     'feature_dim': 128,
-    'num_ugv_views': 8,
+    'num_ugv_views': 16,
     'grid_size': (34, 34, 8), # Smaller grid for faster training
     'grid_resolution': 0.3, # meters per grid cell
-    'batch_size': 4, # Adjust based on your GPU memory
+    'batch_size':4, # Adjust based on your GPU memory
     'learning_rate': 1e-4,
     'epochs': 1000,
     'device': 'cuda' if torch.cuda.is_available() else 'cpu',
-    'val_split_ratio': 0.2, # 20% of the data will be used for validation
+    'val_split_ratio': 0.25, # 20% of the data will be used for validation
 }
 
 def info_nce_loss(features1, features2, temperature):
@@ -53,6 +54,8 @@ def main():
     best_val_loss = float('inf')
     output_model_path = 'models/best_model.pth'
     final_model_path = 'models/final_model.pth'
+
+    writer = SummaryWriter(log_dir='runs')
 
     # --- Data ---
     image_transforms = transforms.Compose([
@@ -109,6 +112,7 @@ def main():
             train_progress_bar.set_postfix({'loss': loss.item()})
 
         avg_train_loss = total_train_loss / len(train_dataloader)
+        writer.add_scalar('Loss/Train', avg_train_loss, epoch+1)
 
         # --- Validation Loop ---
         model.eval()
@@ -130,6 +134,8 @@ def main():
         avg_val_loss = total_val_loss / len(val_dataloader)
 
         print(f"Epoch {epoch+1}/{CONFIG['epochs']} | Train Loss: {avg_train_loss:.4f} | Val Loss: {avg_val_loss:.4f}")
+        
+        writer.add_scalar('Loss/Validation', avg_val_loss, epoch+1)
 
         # --- Save the best model ---
         if avg_val_loss < best_val_loss:
@@ -137,6 +143,7 @@ def main():
             torch.save(model.state_dict(), output_model_path)
             print(f"  -> New best model found! Saved to {output_model_path} (Val Loss: {best_val_loss:.4f})")
     torch.save(model.state_dict(), final_model_path)
+    writer.close()
 
 if __name__ == '__main__':
     main()
