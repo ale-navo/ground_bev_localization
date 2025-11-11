@@ -5,3 +5,4 @@ datasets/*
 visualisations/*
 verification/*
 _pycache_/*
+runs/
